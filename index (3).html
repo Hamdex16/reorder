@@ -1,0 +1,767 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>R3ORDR Protocol — Fan Art Generator</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background: #000;
+      color: #00ff88;
+      font-family: 'Courier New', Courier, monospace;
+      min-height: 100vh;
+      display: flex;
+      align-items: flex-start;
+      justify-content: center;
+      padding: 2rem 1rem 5rem;
+    }
+    .container { width: 100%; max-width: 580px; }
+
+    /* HEADER */
+    .header { text-align: center; margin-bottom: 2rem; }
+    .logo-ring {
+      width: 64px; height: 64px; border-radius: 50%;
+      background: #000; border: 2px solid #00ff88;
+      display: flex; align-items: center; justify-content: center;
+      margin: 0 auto 12px;
+    }
+    .logo-ring span { font-size: 24px; font-weight: 700; letter-spacing: -3px; color: #00ff88; }
+    .header h1 { font-size: 20px; font-weight: 700; letter-spacing: 0.2em; color: #fff; }
+    .header p { font-size: 11px; color: #333; margin-top: 5px; letter-spacing: 0.08em; }
+
+    /* COUNTER STRIP */
+    .counter-strip {
+      display: flex; gap: 0; margin-bottom: 1.5rem;
+      border: 1px solid #111; border-radius: 6px; overflow: hidden;
+    }
+    .counter-cell {
+      flex: 1; padding: 10px 8px; text-align: center;
+      border-right: 1px solid #111; background: #050505;
+    }
+    .counter-cell:last-child { border-right: none; }
+    .counter-val { font-size: 18px; font-weight: 700; color: #00ff88; }
+    .counter-label { font-size: 9px; color: #333; letter-spacing: 0.12em; margin-top: 3px; text-transform: uppercase; }
+
+    /* INPUT */
+    .input-row { display: flex; gap: 8px; margin-bottom: 1rem; }
+    .input-row input {
+      flex: 1; background: #050505; border: 1px solid #1a1a1a;
+      color: #00ff88; font-family: 'Courier New', monospace;
+      font-size: 14px; padding: 12px 14px; border-radius: 6px; outline: none;
+      transition: border-color 0.2s;
+    }
+    .input-row input::placeholder { color: #222; }
+    .input-row input:focus { border-color: #00ff88; }
+    .btn-exec {
+      padding: 12px 18px; background: #000; color: #00ff88;
+      border: 1px solid #00ff88; border-radius: 6px;
+      font-family: 'Courier New', monospace; font-size: 11px;
+      font-weight: 700; letter-spacing: 0.12em; cursor: pointer;
+      transition: background 0.15s, color 0.15s; white-space: nowrap;
+    }
+    .btn-exec:hover { background: #00ff88; color: #000; }
+    .btn-exec:disabled { opacity: 0.3; cursor: not-allowed; background: #000; color: #00ff88; }
+
+    /* CONTROLS */
+    .controls { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 1rem; }
+    .ctrl label { display: block; font-size: 9px; letter-spacing: 0.16em; color: #333; margin-bottom: 5px; text-transform: uppercase; }
+    .ctrl select {
+      width: 100%; background: #050505; border: 1px solid #1a1a1a;
+      color: #00ff88; font-family: 'Courier New', monospace;
+      font-size: 12px; padding: 9px 10px; border-radius: 6px; outline: none; cursor: pointer;
+    }
+    .ctrl select:focus { border-color: #00ff88; }
+
+    /* FORMAT PICKER */
+    .format-row { display: flex; gap: 8px; margin-bottom: 1rem; }
+    .fmt-btn {
+      flex: 1; padding: 8px 6px; background: #050505;
+      border: 1px solid #1a1a1a; color: #333;
+      border-radius: 6px; font-family: 'Courier New', monospace;
+      font-size: 10px; letter-spacing: 0.1em; cursor: pointer;
+      transition: all 0.15s; text-align: center;
+    }
+    .fmt-btn.active { border-color: #00ff88; color: #00ff88; }
+    .fmt-btn:hover { border-color: #00ff8866; color: #00ff8899; }
+
+    /* RANDOMIZE */
+    .btn-random {
+      width: 100%; padding: 10px; background: transparent;
+      border: 1px dashed #1a1a1a; color: #333; border-radius: 6px;
+      font-family: 'Courier New', monospace; font-size: 11px;
+      letter-spacing: 0.1em; cursor: pointer; margin-bottom: 1rem;
+      transition: all 0.15s;
+    }
+    .btn-random:hover { border-color: #00ff8866; color: #00ff8866; }
+
+    /* TERMINAL */
+    .terminal {
+      background: #050505; border: 1px solid #111; border-radius: 6px;
+      padding: 12px 14px; margin-bottom: 1rem; min-height: 80px;
+      font-size: 11px; line-height: 1.8; color: #00ff88; opacity: 0.7;
+      display: none;
+    }
+    .terminal.show { display: block; }
+    .terminal .t-dim { color: #333; }
+    .terminal .t-bright { color: #00ff88; opacity: 1; }
+
+    /* SIGNAL METER */
+    .signal-meter {
+      background: #050505; border: 1px solid #111; border-radius: 6px;
+      padding: 12px 14px; margin-bottom: 1rem; display: none;
+    }
+    .signal-meter.show { display: block; }
+    .meter-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; font-size: 10px; }
+    .meter-label { color: #333; letter-spacing: 0.1em; }
+    .meter-val { color: #00ff88; }
+    .meter-bar { height: 4px; background: #111; border-radius: 2px; margin-bottom: 8px; }
+    .meter-fill { height: 100%; background: #00ff88; border-radius: 2px; transition: width 1s ease; }
+
+    /* LORE */
+    .lore-box {
+      background: #050505; border-left: 2px solid #00ff88;
+      padding: 10px 14px; margin-bottom: 1rem;
+      font-size: 12px; color: #00ff8899; font-style: italic;
+      letter-spacing: 0.05em; display: none; border-radius: 0 6px 6px 0;
+    }
+    .lore-box.show { display: block; }
+
+    /* STATUS */
+    .status { font-size: 11px; color: #00ff88; letter-spacing: 0.1em; min-height: 18px; margin-bottom: 12px; opacity: 0.6; }
+
+    /* CANVAS */
+    .canvas-wrap {
+      position: relative; width: 100%; background: #050505;
+      border: 1px solid #111; border-radius: 10px; overflow: hidden;
+      margin-bottom: 12px; transition: aspect-ratio 0.3s;
+    }
+    .canvas-wrap.square { aspect-ratio: 1; }
+    .canvas-wrap.banner { aspect-ratio: 3/1; }
+    .canvas-wrap.story { aspect-ratio: 9/16; }
+    canvas { width: 100%; height: 100%; display: block; }
+    .placeholder {
+      position: absolute; inset: 0; display: flex;
+      flex-direction: column; align-items: center; justify-content: center; gap: 14px;
+    }
+    .ph-ring {
+      width: 80px; height: 80px; border-radius: 50%;
+      border: 2px dashed #1a1a1a; display: flex;
+      align-items: center; justify-content: center;
+      font-size: 26px; font-weight: 700; letter-spacing: -3px; color: #1a1a1a;
+    }
+    .placeholder p { font-size: 11px; color: #1a1a1a; letter-spacing: 0.14em; }
+
+    /* BOOT OVERLAY */
+    .boot-overlay {
+      position: absolute; inset: 0; background: #000;
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      gap: 8px; z-index: 10; display: none;
+    }
+    .boot-overlay.show { display: flex; }
+    .boot-line { font-size: 11px; color: #00ff88; letter-spacing: 0.1em; opacity: 0; transition: opacity 0.3s; }
+    .boot-line.visible { opacity: 0.8; }
+    .boot-bar-wrap { width: 60%; height: 3px; background: #111; border-radius: 2px; margin-top: 8px; }
+    .boot-bar { height: 100%; background: #00ff88; border-radius: 2px; width: 0%; transition: width 0.4s; }
+
+    /* COPY BOX */
+    .copy-box {
+      background: #050505; border: 1px solid #111; border-radius: 6px;
+      padding: 14px; margin-bottom: 1rem; display: none;
+    }
+    .copy-box.show { display: block; }
+    .copy-label { font-size: 9px; color: #333; letter-spacing: 0.14em; text-transform: uppercase; margin-bottom: 8px; }
+    .copy-text { font-size: 12px; color: #00ff8899; line-height: 1.8; white-space: pre-wrap; margin-bottom: 10px; }
+    .btn-copy {
+      padding: 8px 14px; background: transparent; border: 1px solid #1a1a1a;
+      color: #333; border-radius: 6px; font-family: 'Courier New', monospace;
+      font-size: 10px; letter-spacing: 0.1em; cursor: pointer; transition: all 0.15s;
+    }
+    .btn-copy:hover { border-color: #00ff8866; color: #00ff8866; }
+    .btn-copy.copied { border-color: #00ff88; color: #00ff88; }
+
+    /* ACTIONS */
+    .action-row { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 2rem; }
+    .btn-dl {
+      padding: 13px; background: #000; color: #00ff88;
+      border: 1px solid #00ff88; border-radius: 6px;
+      font-family: 'Courier New', monospace; font-size: 11px;
+      font-weight: 700; letter-spacing: 0.1em; cursor: pointer;
+      transition: background 0.15s, color 0.15s;
+    }
+    .btn-dl:hover { background: #00ff88; color: #000; }
+    .btn-dl:disabled { opacity: 0.25; cursor: not-allowed; background: #000; color: #00ff88; }
+    .btn-share {
+      padding: 13px; background: transparent; color: #444;
+      border: 1px solid #1a1a1a; border-radius: 6px;
+      font-family: 'Courier New', monospace; font-size: 11px;
+      letter-spacing: 0.1em; cursor: pointer;
+      transition: border-color 0.15s, color 0.15s;
+    }
+    .btn-share:hover { border-color: #1d9bf0; color: #1d9bf0; }
+    .btn-share:disabled { opacity: 0.25; cursor: not-allowed; }
+
+    footer { text-align: center; font-size: 10px; color: #1a1a1a; letter-spacing: 0.16em; }
+
+    @media (max-width: 480px) {
+      .controls { grid-template-columns: 1fr; }
+      .action-row { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+<div class="container">
+
+  <div class="header">
+    <div class="logo-ring"><span>oo</span></div>
+    <h1>R3ORDR PROTOCOL</h1>
+    <p>console.log("Reordering the System...");</p>
+  </div>
+
+  <div class="counter-strip">
+    <div class="counter-cell">
+      <div class="counter-val" id="cntReordered">0</div>
+      <div class="counter-label">signals reordered</div>
+    </div>
+    <div class="counter-cell">
+      <div class="counter-val" id="cntActive">0</div>
+      <div class="counter-label">active protocols</div>
+    </div>
+    <div class="counter-cell">
+      <div class="counter-val" id="cntBreach">0</div>
+      <div class="counter-label">breach index</div>
+    </div>
+  </div>
+
+  <div class="input-row">
+    <input type="text" id="username" placeholder="@your_twitter_username" />
+    <button class="btn-exec" id="genBtn" onclick="generate()">EXECUTE</button>
+  </div>
+
+  <div class="controls">
+    <div class="ctrl">
+      <label>Signal color</label>
+      <select id="signalColor">
+        <option value="#00ff88">Signal green</option>
+        <option value="#ff3c3c">Red alert</option>
+        <option value="#00cfff">Ghost blue</option>
+        <option value="#ffffff">Pure white</option>
+        <option value="#ffcc00">Gold protocol</option>
+        <option value="#cc44ff">Void purple</option>
+      </select>
+    </div>
+    <div class="ctrl">
+      <label>Corruption level</label>
+      <select id="corruption">
+        <option value="low">Low — subtle</option>
+        <option value="mid" selected>Mid — glitched</option>
+        <option value="high">High — corrupted</option>
+      </select>
+    </div>
+    <div class="ctrl">
+      <label>Overlay style</label>
+      <select id="overlay">
+        <option value="grid">Grid scan</option>
+        <option value="lines" selected>Signal lines</option>
+        <option value="circuit">Circuit trace</option>
+        <option value="noise">Data noise</option>
+      </select>
+    </div>
+    <div class="ctrl">
+      <label>Badge</label>
+      <select id="badge">
+        <option value="protocol">R3ORDR PROTOCOL</option>
+        <option value="signal">SIGNAL DETECTED</option>
+        <option value="reorder">REORDERING...</option>
+        <option value="none">None</option>
+      </select>
+    </div>
+  </div>
+
+  <div class="format-row">
+    <div class="fmt-btn active" onclick="setFormat('square', this)">▪ PFP<br><span style="font-size:9px;color:#333">1:1</span></div>
+    <div class="fmt-btn" onclick="setFormat('banner', this)">▬ BANNER<br><span style="font-size:9px;color:#333">3:1</span></div>
+    <div class="fmt-btn" onclick="setFormat('story', this)">▮ STORY<br><span style="font-size:9px;color:#333">9:16</span></div>
+  </div>
+
+  <button class="btn-random" onclick="randomize()">⟳ RANDOMIZE SETTINGS</button>
+
+  <div class="terminal" id="terminal"></div>
+  <div class="signal-meter" id="signalMeter">
+    <div class="meter-row"><span class="meter-label">SIGNAL STRENGTH</span><span class="meter-val" id="mStrength">0%</span></div>
+    <div class="meter-bar"><div class="meter-fill" id="mStrengthBar" style="width:0%"></div></div>
+    <div class="meter-row"><span class="meter-label">CORRUPTION INDEX</span><span class="meter-val" id="mCorrupt">0.00</span></div>
+    <div class="meter-bar"><div class="meter-fill" id="mCorruptBar" style="width:0%"></div></div>
+    <div class="meter-row"><span class="meter-label">PROTOCOL STATUS</span><span class="meter-val" id="mStatus">STANDBY</span></div>
+  </div>
+
+  <div class="lore-box" id="loreBox"></div>
+  <div class="status" id="status">// awaiting signal input</div>
+
+  <div class="canvas-wrap square" id="canvasWrap">
+    <div class="placeholder" id="placeholder">
+      <div class="ph-ring">oo</div>
+      <p>// no signal detected</p>
+    </div>
+    <div class="boot-overlay" id="bootOverlay">
+      <div class="boot-line" id="bl1">&gt; connecting to R3ORDR network...</div>
+      <div class="boot-line" id="bl2">&gt; signal located</div>
+      <div class="boot-line" id="bl3">&gt; identity breach in progress...</div>
+      <div class="boot-line" id="bl4">&gt; reordering complete ✓</div>
+      <div class="boot-bar-wrap"><div class="boot-bar" id="bootBar"></div></div>
+    </div>
+    <canvas id="artCanvas" width="600" height="600" style="display:none;opacity:0;transition:opacity 0.6s;"></canvas>
+  </div>
+
+  <div class="copy-box" id="copyBox">
+    <div class="copy-label">// ready-to-post caption</div>
+    <div class="copy-text" id="copyText"></div>
+    <button class="btn-copy" id="copyBtn" onclick="copyCaption()">COPY CAPTION</button>
+  </div>
+
+  <div class="action-row">
+    <button class="btn-dl" id="dlBtn" disabled onclick="downloadArt()">↓ DOWNLOAD .PNG</button>
+    <button class="btn-share" id="shareBtn" disabled onclick="shareToTwitter()">POST TO X →</button>
+  </div>
+
+  <footer>// r3ordr.com — signals are getting harder to ignore</footer>
+</div>
+
+<script>
+  let generatedUsername = '';
+  let currentFormat = 'square';
+  let signalStrength = 0;
+  let corruptIndex = 0;
+
+  const loreLines = [
+    'Signal #{n} — the system remembers you.',
+    'Protocol breach detected. Welcome back.',
+    'You were always part of the order.',
+    'The reorder was inevitable.',
+    'Identity confirmed. Signal locked.',
+    'System acknowledged. You cannot unsee this.',
+    'The protocol has been watching.',
+    'Signal {n}: your data has been reordered.',
+    'Resistance is a signal too.',
+    'They said ignore it. You couldn\'t.',
+    'The loop closes. You are inside it now.',
+    'Corruption accepted. Signal amplified.',
+  ];
+
+  const terminalSeqs = [
+    '> connecting to R3ORDR network...',
+    '> handshake established',
+    '> fetching identity signal...',
+    '> running protocol breach...',
+    '> applying reorder sequence...',
+    '> DONE — signal reordered',
+  ];
+
+  document.getElementById('artCanvas').style.display = 'none';
+
+  // animate counters on load
+  function animateCounter(id, target, duration) {
+    const el = document.getElementById(id);
+    const start = Date.now();
+    const tick = () => {
+      const p = Math.min((Date.now() - start) / duration, 1);
+      el.textContent = Math.floor(p * target).toLocaleString();
+      if (p < 1) requestAnimationFrame(tick);
+    };
+    tick();
+  }
+  const baseReordered = 2341 + Math.floor(Math.random() * 200);
+  animateCounter('cntReordered', baseReordered, 1800);
+  animateCounter('cntActive', 187 + Math.floor(Math.random() * 30), 1400);
+  animateCounter('cntBreach', Math.floor(Math.random() * 99), 1200);
+
+  function setStatus(msg) { document.getElementById('status').textContent = msg; }
+
+  function setFormat(fmt, el) {
+    currentFormat = fmt;
+    document.querySelectorAll('.fmt-btn').forEach(b => b.classList.remove('active'));
+    el.classList.add('active');
+    const wrap = document.getElementById('canvasWrap');
+    wrap.className = 'canvas-wrap ' + fmt;
+    const canvas = document.getElementById('artCanvas');
+    if (canvas.style.display !== 'none') {
+      const img = new Image();
+      img.onload = () => renderArt(img, generatedUsername, true);
+      img.src = canvas.toDataURL();
+    }
+  }
+
+  function randomize() {
+    const colors = ['#00ff88','#ff3c3c','#00cfff','#ffffff','#ffcc00','#cc44ff'];
+    const corruptions = ['low','mid','high'];
+    const overlays = ['grid','lines','circuit','noise'];
+    const badges = ['protocol','signal','reorder','none'];
+    document.getElementById('signalColor').value = colors[Math.floor(Math.random()*colors.length)];
+    document.getElementById('corruption').value = corruptions[Math.floor(Math.random()*corruptions.length)];
+    document.getElementById('overlay').value = overlays[Math.floor(Math.random()*overlays.length)];
+    document.getElementById('badge').value = badges[Math.floor(Math.random()*badges.length)];
+    if (generatedUsername) generate();
+  }
+
+  async function runTerminal() {
+    const el = document.getElementById('terminal');
+    el.classList.add('show');
+    el.innerHTML = '';
+    for (let i = 0; i < terminalSeqs.length; i++) {
+      await delay(280 + Math.random() * 200);
+      const line = document.createElement('div');
+      line.innerHTML = `<span class="t-dim">${terminalSeqs[i]}</span>`;
+      el.appendChild(line);
+      if (i === terminalSeqs.length - 1) line.innerHTML = `<span class="t-bright">${terminalSeqs[i]}</span>`;
+    }
+  }
+
+  async function runBoot() {
+    const overlay = document.getElementById('bootOverlay');
+    const bar = document.getElementById('bootBar');
+    overlay.classList.add('show');
+    const lines = ['bl1','bl2','bl3','bl4'];
+    for (let i = 0; i < lines.length; i++) {
+      await delay(400);
+      document.getElementById(lines[i]).classList.add('visible');
+      bar.style.width = ((i+1)/lines.length*100) + '%';
+    }
+    await delay(500);
+    overlay.classList.remove('show');
+  }
+
+  function updateSignalMeter(corruptionLevel) {
+    signalStrength = 60 + Math.floor(Math.random() * 40);
+    corruptIndex = corruptionLevel === 'low' ? (Math.random()*0.3).toFixed(2)
+                 : corruptionLevel === 'mid'  ? (0.3 + Math.random()*0.4).toFixed(2)
+                 : (0.7 + Math.random()*0.29).toFixed(2);
+    const statusLabels = { low:'STABLE', mid:'ACTIVE', high:'CRITICAL' };
+    const meter = document.getElementById('signalMeter');
+    meter.classList.add('show');
+    setTimeout(() => {
+      document.getElementById('mStrength').textContent = signalStrength + '%';
+      document.getElementById('mStrengthBar').style.width = signalStrength + '%';
+      document.getElementById('mCorrupt').textContent = corruptIndex;
+      document.getElementById('mCorruptBar').style.width = (corruptIndex * 100) + '%';
+      document.getElementById('mStatus').textContent = statusLabels[corruptionLevel];
+    }, 600);
+  }
+
+  function showLore(username) {
+    const n = Math.floor(1000 + Math.random() * 8999);
+    const line = loreLines[Math.floor(Math.random() * loreLines.length)]
+      .replace('{n}', n);
+    const el = document.getElementById('loreBox');
+    el.textContent = '"' + line + '"';
+    el.classList.add('show');
+  }
+
+  function buildCaption(username) {
+    const n = Math.floor(1000 + Math.random() * 8999);
+    return `just let the protocol reorder me 👁
+
+@R3ORDR @Dario_Desiena
+
+console.log("signal #${n} acquired...")
+
+built a free fan art generator for the community
+so anyone can get reordered 👇
+[paste your replit link here]
+
+#R3ORDR #R3ORDRProtocol #NFT #Web3`;
+  }
+
+  function showCopyBox(username) {
+    const box = document.getElementById('copyBox');
+    const txt = document.getElementById('copyText');
+    txt.textContent = buildCaption(username);
+    box.classList.add('show');
+  }
+
+  async function copyCaption() {
+    const txt = document.getElementById('copyText').textContent;
+    await navigator.clipboard.writeText(txt);
+    const btn = document.getElementById('copyBtn');
+    btn.textContent = 'COPIED ✓';
+    btn.classList.add('copied');
+    setTimeout(() => { btn.textContent = 'COPY CAPTION'; btn.classList.remove('copied'); }, 2000);
+  }
+
+  function delay(ms) { return new Promise(r => setTimeout(r, ms)); }
+
+  async function generate() {
+    let raw = document.getElementById('username').value.trim();
+    if (!raw) { setStatus('// error: no username provided'); return; }
+    raw = raw.replace(/^@/, '');
+    generatedUsername = raw;
+
+    const btn = document.getElementById('genBtn');
+    btn.disabled = true;
+    document.getElementById('terminal').classList.remove('show');
+    document.getElementById('signalMeter').classList.remove('show');
+    document.getElementById('loreBox').classList.remove('show');
+    document.getElementById('copyBox').classList.remove('show');
+    document.getElementById('artCanvas').style.opacity = '0';
+    setStatus('// fetching signal from @' + raw + '...');
+
+    runTerminal();
+
+    const proxyUrls = [
+      `https://unavatar.io/twitter/${raw}`,
+      `https://unavatar.io/x/${raw}`,
+      `https://ui-avatars.com/api/?name=${encodeURIComponent(raw)}&size=600&background=111111&color=00ff88&font-size=0.38&bold=true&format=png`
+    ];
+
+    let img = null;
+    for (let url of proxyUrls) {
+      try {
+        img = await Promise.race([
+          new Promise((res, rej) => {
+            const i = new Image(); i.crossOrigin = 'anonymous';
+            i.onload = () => res(i); i.onerror = rej;
+            i.src = url;
+          }),
+          new Promise((_, rej) => setTimeout(rej, 7000))
+        ]);
+        setStatus('// signal acquired — running breach...');
+        break;
+      } catch(e) { img = null; }
+    }
+
+    if (!img) {
+      setStatus('// fallback signal — rendering...');
+      try {
+        img = await new Promise((res, rej) => {
+          const i = new Image(); i.crossOrigin = 'anonymous';
+          i.onload = () => res(i); i.onerror = rej;
+          i.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(raw)}&size=600&background=111111&color=00ff88&font-size=0.38&bold=true&format=png`;
+        });
+      } catch(e) {
+        setStatus('// error: signal lost — try again');
+        btn.disabled = false;
+        return;
+      }
+    }
+
+    await runBoot();
+    renderArt(img, raw, false);
+    btn.disabled = false;
+  }
+
+  function renderArt(img, username, skipFx) {
+    const canvas = document.getElementById('artCanvas');
+    const ctx = canvas.getContext('2d');
+    const corruption = document.getElementById('corruption').value;
+    const signalColor = document.getElementById('signalColor').value;
+    const overlayStyle = document.getElementById('overlay').value;
+    const badge = document.getElementById('badge').value;
+    const glitchAmt = corruption === 'low' ? 3 : corruption === 'mid' ? 8 : 18;
+
+    let W, H;
+    if (currentFormat === 'square')      { W = 600; H = 600; }
+    else if (currentFormat === 'banner') { W = 1500; H = 500; }
+    else                                  { W = 600; H = 1066; }
+
+    canvas.width = W; canvas.height = H;
+
+    ctx.fillStyle = '#000';
+    ctx.fillRect(0, 0, W, H);
+
+    const size = Math.min(W, H) * 0.75;
+    const cx = W / 2, cy = H / 2;
+    const ix = cx - size/2, iy = cy - size/2;
+
+    ctx.save();
+    ctx.beginPath();
+    ctx.arc(cx, cy, size/2, 0, Math.PI*2);
+    ctx.clip();
+    ctx.drawImage(img, ix, iy, size, size);
+    ctx.restore();
+
+    if (!skipFx) applyGlitch(ctx, W, H, glitchAmt, signalColor);
+    applyVignette(ctx, W, H, cx, cy, size/2);
+    applyOverlay(ctx, W, H, overlayStyle, signalColor);
+    drawRing(ctx, cx, cy, size/2 + 8, signalColor);
+    drawLogo(ctx, signalColor);
+    drawHandle(ctx, username, W, H, signalColor);
+    if (badge !== 'none') drawBadge(ctx, badge, signalColor, W, H);
+    drawWatermark(ctx, W, H);
+    if (!skipFx) applyFinalNoise(ctx, W, H, corruption);
+
+    document.getElementById('placeholder').style.display = 'none';
+    canvas.style.display = 'block';
+    setTimeout(() => { canvas.style.opacity = '1'; }, 50);
+
+    updateSignalMeter(corruption);
+    showLore(username);
+    showCopyBox(username);
+    setStatus('// protocol applied — @' + username + ' reordered ✓');
+
+    // bump counter
+    const cnt = document.getElementById('cntReordered');
+    cnt.textContent = (parseInt(cnt.textContent.replace(/,/g,'')) + 1).toLocaleString();
+
+    document.getElementById('dlBtn').disabled = false;
+    document.getElementById('shareBtn').disabled = false;
+  }
+
+  function applyGlitch(ctx, W, H, amt, col) {
+    for (let i = 0; i < amt * 2; i++) {
+      const sy = Math.random() * H;
+      const sh = Math.random() * 14 + 2;
+      const shift = (Math.random() - 0.5) * amt * 5;
+      if (Math.random() > 0.65) {
+        ctx.save();
+        ctx.globalCompositeOperation = 'screen';
+        ctx.globalAlpha = 0.07 + Math.random() * 0.1;
+        ctx.fillStyle = col;
+        ctx.fillRect(0, sy, W, sh);
+        ctx.restore();
+      }
+      const data = ctx.getImageData(0, sy, W, sh);
+      ctx.putImageData(data, shift, sy);
+    }
+    for (let i = 0; i < amt; i++) {
+      const sy = Math.random() * H;
+      const sh = Math.random() * 3 + 1;
+      const data = ctx.getImageData(0, sy, W, sh);
+      const d = data.data;
+      for (let j = 0; j < d.length; j += 4) {
+        if (Math.random() > 0.5) { d[j]=0; d[j+1]=153; d[j+2]=82; }
+      }
+      ctx.putImageData(data, 0, sy);
+    }
+  }
+
+  function applyVignette(ctx, W, H, cx, cy, r) {
+    const g = ctx.createRadialGradient(cx, cy, r*0.5, cx, cy, r+120);
+    g.addColorStop(0, 'rgba(0,0,0,0)');
+    g.addColorStop(1, 'rgba(0,0,0,0.88)');
+    ctx.fillStyle = g;
+    ctx.fillRect(0, 0, W, H);
+  }
+
+  function applyOverlay(ctx, W, H, style, col) {
+    ctx.save();
+    ctx.globalAlpha = 0.11;
+    ctx.strokeStyle = col;
+    if (style === 'grid') {
+      ctx.lineWidth = 0.5;
+      for (let i = 0; i < W; i += 24) { ctx.beginPath(); ctx.moveTo(i,0); ctx.lineTo(i,H); ctx.stroke(); }
+      for (let j = 0; j < H; j += 24) { ctx.beginPath(); ctx.moveTo(0,j); ctx.lineTo(W,j); ctx.stroke(); }
+    } else if (style === 'lines') {
+      ctx.lineWidth = 0.7;
+      for (let j = 0; j < H; j += 4) { ctx.beginPath(); ctx.moveTo(0,j); ctx.lineTo(W,j); ctx.stroke(); }
+    } else if (style === 'circuit') {
+      ctx.lineWidth = 1;
+      for (let i = 0; i < 16; i++) {
+        let px = Math.random()*W, py = Math.random()*H;
+        ctx.beginPath(); ctx.moveTo(px,py);
+        for (let s = 0; s < 5; s++) {
+          const nx = px+(Math.random()-0.5)*130, ny = py+(Math.random()-0.5)*130;
+          if (Math.random()>0.5){ctx.lineTo(nx,py);ctx.lineTo(nx,ny);}
+          else{ctx.lineTo(px,ny);ctx.lineTo(nx,ny);}
+          px=nx; py=ny;
+        }
+        ctx.stroke();
+        ctx.beginPath(); ctx.arc(px,py,3,0,Math.PI*2); ctx.fill();
+      }
+    } else if (style === 'noise') {
+      ctx.globalAlpha = 0.05;
+      for (let i = 0; i < 2200; i++) {
+        ctx.fillStyle = col;
+        ctx.fillRect(Math.random()*W, Math.random()*H, Math.random()*3+1, Math.random()*3+1);
+      }
+    }
+    ctx.restore();
+  }
+
+  function drawRing(ctx, cx, cy, r, col) {
+    ctx.save();
+    ctx.strokeStyle = col; ctx.lineWidth = 2.5; ctx.globalAlpha = 0.9;
+    ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI*2); ctx.stroke();
+    ctx.lineWidth = 1; ctx.globalAlpha = 0.25;
+    ctx.beginPath(); ctx.arc(cx, cy, r+14, 0, Math.PI*2); ctx.stroke();
+    ctx.restore();
+  }
+
+  function drawLogo(ctx, col) {
+    ctx.save();
+    ctx.fillStyle = '#000';
+    ctx.beginPath(); ctx.arc(41,41,26,0,Math.PI*2); ctx.fill();
+    ctx.strokeStyle = col; ctx.lineWidth = 1.5;
+    ctx.beginPath(); ctx.arc(41,41,26,0,Math.PI*2); ctx.stroke();
+    ctx.fillStyle = col;
+    ctx.font = 'bold 20px Courier New';
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillText('oo', 41, 42);
+    ctx.restore();
+  }
+
+  function drawHandle(ctx, username, W, H, col) {
+    ctx.save();
+    ctx.font = '500 13px Courier New';
+    ctx.fillStyle = col; ctx.globalAlpha = 0.8;
+    ctx.textAlign = 'center'; ctx.textBaseline = 'bottom';
+    ctx.fillText('@' + username, W/2, H - 12);
+    ctx.restore();
+  }
+
+  function drawBadge(ctx, type, col, W, H) {
+    const labels = { protocol:'R3ORDR PROTOCOL', signal:'SIGNAL DETECTED', reorder:'REORDERING...' };
+    const label = labels[type] || '';
+    ctx.save();
+    ctx.font = 'bold 10px Courier New';
+    const tw = ctx.measureText(label).width;
+    const bw = tw+18, bh=22, bx=W-bw-14, by=14;
+    ctx.fillStyle='#000'; ctx.fillRect(bx,by,bw,bh);
+    ctx.strokeStyle=col; ctx.lineWidth=1; ctx.strokeRect(bx,by,bw,bh);
+    ctx.fillStyle=col; ctx.textAlign='left'; ctx.textBaseline='middle';
+    ctx.fillText(label, bx+9, by+11);
+    ctx.restore();
+  }
+
+  function drawWatermark(ctx, W, H) {
+    ctx.save();
+    ctx.font = '10px Courier New';
+    ctx.fillStyle = '#ffffff';
+    ctx.globalAlpha = 0.18;
+    ctx.textAlign = 'left';
+    ctx.textBaseline = 'bottom';
+    ctx.fillText('r3ordr.com', 16, H - 12);
+    ctx.restore();
+  }
+
+  function applyFinalNoise(ctx, W, H, level) {
+    if (level === 'low') return;
+    const amt = level === 'mid' ? 0.022 : 0.05;
+    const imgData = ctx.getImageData(0,0,W,H);
+    const d = imgData.data;
+    for (let i=0; i<d.length; i+=4) {
+      const n=(Math.random()-0.5)*255*amt;
+      d[i]+=n; d[i+1]+=n; d[i+2]+=n;
+    }
+    ctx.putImageData(imgData,0,0);
+  }
+
+  function downloadArt() {
+    const canvas = document.getElementById('artCanvas');
+    const link = document.createElement('a');
+    link.download = `r3ordr_${generatedUsername||'protocol'}_${currentFormat}.png`;
+    link.href = canvas.toDataURL('image/png');
+    link.click();
+  }
+
+  function shareToTwitter() {
+    const caption = document.getElementById('copyText').textContent ||
+      `just let the protocol reorder me 👁\n\n@R3ORDR @Dario_Desiena\n\nconsole.log("signal acquired...")\n\n#R3ORDR #R3ORDRProtocol #NFT`;
+    window.open(`https://twitter.com/intent/tweet?text=${encodeURIComponent(caption)}`, '_blank');
+  }
+
+  document.getElementById('username').addEventListener('keydown', e => {
+    if (e.key === 'Enter') generate();
+  });
+</script>
+</body>
+</html>
